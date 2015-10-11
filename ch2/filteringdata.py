@@ -53,7 +53,8 @@ def computeNearestNeighbor(username, users):
     for user in users:
         rating2 = users[user]
         #distance = Minkowski(rating1, rating2, 3)
-        distance = pearson(rating1, rating2)
+        #distance = pearson(rating1, rating2)
+        distance = cosine_similarity(rating1, rating2)
         neighbors.append((user, distance))
     neighbors.sort(key=lambda likelihood:likelihood[1], reverse=True)
     print(neighbors)
@@ -91,7 +92,26 @@ def pearson(rating1, rating2):
         return 0
     return float(molecule)/denominator
 
-print( recommend('Hailey', users))
+
+def cosine_similarity(rating1, rating2):
+    sum_value =0.0
+    sum_x = 0.0
+    sum_y = 0.0
+    for key in rating1:
+        sum_x += rating1[key] * rating1[key]
+
+    for key in rating2:
+        sum_y += rating2[key] * rating2[key]
+
+    for key in rating1:
+        if key in rating2:
+            sum_value += rating1[key]*rating2[key]
+
+    similarity = sum_value /(sqrt(sum_x) * sqrt(sum_y))
+
+    return similarity
+
+print( recommend('Jordyn', users))
 #print( pearson(users['Angelica'], users['Bill']) )
 #print( pearson(users['Angelica'], users['Hailey']) )
 #print( pearson(users['Angelica'], users['Jordyn']) )
