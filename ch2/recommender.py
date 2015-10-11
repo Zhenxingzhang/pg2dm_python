@@ -53,11 +53,13 @@ class recommender:
             i += 1
             if i == 1:
                 continue
-
-            fields = line.split(';')
-            user = fields[0].strip('"')
-            book = fields[1].strip('"')
-            rating = int(fields[2].strip().strip('"'))
+            try:
+                fields = line.split(';')
+                user = fields[0].strip('"')
+                book = fields[1].strip('"')
+                rating = int(fields[2].strip().strip('"'))
+            except ValueError:
+                print "Error in line: "+ line
             if user in self.data:
                 currentRatings = self.data[user]
             else:
@@ -128,17 +130,40 @@ class recommender:
             return 0
         return float(molecule)/denominator
 
+    def convertProductID2name(self, id):
+        """Given product id number return product name"""
+        if id in self.productid2name:
+            return self.productid2name[id]
+        else:
+            return id
+
+    def userRatings(self, id, n=10):
+        """Return n top ratings for user with id"""
+        print ("Ratings for " + self.userid2name[id])
+        ratings = self.data[id]
+        #print(len(ratings))
+        ratings = list(ratings.items())
+        ratings = [(self.convertProductID2name(k), v) for (k, v) in ratings]
+        # finally sort and return
+        ratings.sort(key=lambda artistTuple: artistTuple[1], reverse = True)
+        ratings = ratings[:n]
+        i=1
+        for rating in ratings:
+            print("%i: %s\t%i" % (i, rating[0], rating[1]))
+            i = i+1
+
     # return (username, distance)
     def computeNearestNeighbor(self, user):
         rating1 = self.data[user]
         neighbors = []
         for item in self.data:
+            print item
             rating2 = self.data[item]
             #distance = Minkowski(rating1, rating2, 3)
             distance = self.fn(rating1, rating2)
             #distance = cosine_similarity(rating1, rating2)
             neighbors.append((item, distance))
-            neighbors.sort(key=lambda likelihood:likelihood[1], reverse=True)
+            neighbors.sort(key=lambda user:user[1], reverse=True)
         #print(neighbors)
         return neighbors[1:1+self.k]
 
@@ -180,7 +205,9 @@ r = recommender(users, 3)
 print r.recommend('Jordyn')
 
 r.loadBookDB('/Users/zhenxing/Documents/Training_Courses/pg2dm/pg2dm-mycode/data/')
-print r.data['171118']
+print len(r.data)
 
-r.recommend('171118')
+print r.userRatings('171118')
+
+#r.recommend('171118')
 
