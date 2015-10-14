@@ -33,6 +33,13 @@ class Classifier:
                     classification = fields[i]
             self.data.append((classification, vector, ignore))
         self.rawData = list(self.data)
+        #get the vector dimension
+        self.v_dim = len(self.data[0][1])
+        #now normalize the data;
+        for idx in range(self.v_dim):
+            self.normalize_column(idx)
+
+        #print [row[1] for row in self.data]
 
     ##################################################
     ###
@@ -51,18 +58,50 @@ class Classifier:
 
     def getAbsoluteStandardDeviation(self, alist, median):
         length = len(alist)
-        diffs = 0
-        for idx in range(length):
-            diffs += abs(alist[idx] - median)
+        diffs = 0.0
+        for item in alist:
+            diffs += abs(item - median)
 
         return diffs/length
 
-def unitTest():
+    def normalize_column(self, column_idx):
+        """given a column number, normalize that column in self.data"""
+        # first extract values to list
+        vec_column = [ v[1][column_idx] for v in self.data]
+        median = self.getMedian(vec_column)
+        asd = self.getAbsoluteStandardDeviation(vec_column, median)
+        self.medianAndDeviation.append((median, asd))
+        for v in self.data:
+            v[1][column_idx] = (v[1][column_idx] - median) / asd
+
+    def normalizeVector(self, v):
+        """We have stored the median and asd for each column.
+        We now use them to normalize vector v"""
+        vector = list(v)
+        for i in range(len(vector)):
+            (median, asd) = self.medianAndDeviation[i]
+            vector[i] = (vector[i] - median) / asd
+        return vector
+
+    def classify(self, itemVector):
+        """Return class we think item Vector is in"""
+        vector = self.normalizeVector(itemVector)
+        neighbors = self.nearestNeighbor(vector)
+        print neighbors
+        return(neighbors[1][0])
+
+    def nearestNeighbor(self, vector):
+        return min([(self.manhattan(vector, item[1]), item) for item in self.data])
+
+    def manhattan(self, vector1, vector2):
+        return sum(map(lambda v1, v2: abs(v1 - v2), vector1, vector2))
+
+
+def unitTest(classifier):
     list1 = [54, 72, 78, 49, 65, 63, 75, 67, 54]
     list2 = [54, 72, 78, 49, 65, 63, 75, 67, 54, 68]
     list3 = [69]
     list4 = [69, 72]
-    classifier = Classifier('../data/ch4/athletesTrainingSet.txt')
     m1 = classifier.getMedian(list1)
     m2 = classifier.getMedian(list2)
     m3 = classifier.getMedian(list3)
@@ -84,5 +123,10 @@ def unitTest():
 
     print("getMedian and getAbsoluteStandardDeviation work correctly")
 
-unitTest()
+classifier = Classifier('../data/ch4/athletesTrainingSet.txt')
 
+unitTest(classifier)
+
+#print classifier.medianAndDeviation
+#classifier.normalize_column(1)
+print classifier.classify([74, 190])
