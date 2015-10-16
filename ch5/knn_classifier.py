@@ -219,5 +219,5 @@ def tenfold(bucketPrefix, dataFormat, k):
     print("total of %i instances" % total)
 
 
-tenfold("../data/mpgData/mpgData","class	num	num	num	num	num	comment", 3)
+tenfold("../data/mpgData/mpgData","class	num	num	num	num	num	comment", 1)
 
