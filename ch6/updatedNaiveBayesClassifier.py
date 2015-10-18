@@ -1,3 +1,6 @@
+__author__ = 'zhenxingzhang'
+
+import math
 class NaiveBayesClassifer:
     """ a classifier will be built from files with the bucketPrefix
     excluding the file with textBucketNumber. dataFormat is a
@@ -6,22 +9,35 @@ class NaiveBayesClassifer:
     "attr attr attr attr class"
     """
 
-    def __init__(self, bucketPrefix, testBucketNumber, data_format):
+    def __init__(self, bucketPrefix, testBucketNumber, dataFormat):
+        """ a classifier will be built from files with the bucketPrefix
+        excluding the file with textBucketNumber. dataFormat is a string that
+        describes how to interpret each line of the data files. For example,
+        for the iHealth data the format is:
+        "attr	attr	attr	attr	class"
+        """
+
         total = 0
         classes = {}
+        # counts used for attributes that are not numeric
         counts = {}
+        # totals used for attributes that are numereric
+        # we will use these to compute the mean and sample standard deviation for
+        # each attribute - class pair.
+        totals = {}
+        numericValues = {}
 
-        #reading the data in from the file
-        self.format = data_format.strip().split('\t')
-        # prior probability for each hypothesis (category, probability value)
+
+        # reading the data in from the file
+
+        self.format = dataFormat.strip().split('\t')
+        #
         self.prior = {}
-        # conditional probabilities of each observation in each hypothesis {hypothesis_name : {attribute_class:{obs1: prob, obs2: prob...}}}
         self.conditional = {}
-
 
         # for each of the buckets numbered 1 through 10:
         for i in range(1, 11):
-        #if it is not the bucket we should ignore, read in the data
+            # if it is not the bucket we should ignore, read in the data
             if i != testBucketNumber:
                 filename = "%s-%02i" % (bucketPrefix, i)
                 f = open(filename)
@@ -31,9 +47,11 @@ class NaiveBayesClassifer:
                     fields = line.strip().split('\t')
                     ignore = []
                     vector = []
+                    nums = []
                     for i in range(len(fields)):
                         if self.format[i] == 'num':
                             vector.append(float(fields[i]))
+                            nums.append(float(fields[i]))
                         elif self.format[i] == 'attr':
                             vector.append(fields[i])
                         elif self.format[i] == 'comment':
@@ -44,32 +62,73 @@ class NaiveBayesClassifer:
                     total += 1
                     classes.setdefault(category, 0)
                     counts.setdefault(category, {})
+                    totals.setdefault(category, {})
+                    numericValues.setdefault(category, {})
                     classes[category] += 1
-                    # now process each attribute of the instance
+                    # now process each non-numeric attribute of the instance
                     col = 0
+
                     for columnValue in vector:
                         col += 1
                         counts[category].setdefault(col, {})
-                        counts[category][col].setdefault(columnValue,0)
+                        counts[category][col].setdefault(columnValue, 0)
                         counts[category][col][columnValue] += 1
-        print classes, counts
+                    # process numeric attributes
+                    col = 0
+                    for columnValue in nums:
+                        col += 1
+                        totals[category].setdefault(col, 0)
+                        #totals[category][col].setdefault(columnValue, 0)
+                        totals[category][col] += columnValue
+                        numericValues[category].setdefault(col, [])
+                        numericValues[category][col].append(columnValue)
+
+        #print classes, counts, numericValues
         #
         # ok done counting. now compute probabilities
         #
         # first prior probabilities p(h)
         #
         for (category, count) in classes.items():
-            self.prior[category] = float(count) / total
+            self.prior[category] =float( count) / total
         #
         # now compute conditional probabilities p(h|D)
         #
         for (category, columns) in counts.items():
-            self.conditional.setdefault(category, {})
-            for (col, valueCounts) in columns.items():
-                self.conditional[category].setdefault(col, {})
-                for (attrValue, count) in valueCounts.items():
-                    self.conditional[category][col][attrValue] = (float(count)  / classes[category])
-        print self.conditional
+              self.conditional.setdefault(category, {})
+              for (col, valueCounts) in columns.items():
+                  self.conditional[category].setdefault(col, {})
+                  for (attrValue, count) in valueCounts.items():
+                      self.conditional[category][col][attrValue] = (float( count) / classes[category])
+        self.tmp =  counts
+        #print self.conditional
+        #
+        # now compute mean and sample standard deviation
+
+        # ADD YOUR CODE HERE
+        # for (category, count) in classes.items():
+        self.means = {}
+        self.ssd = {}
+        for(category, columns) in numericValues.items():
+            self.means.setdefault(category, {})
+            self.ssd.setdefault(category, {})
+            for (col, numericValues) in columns.items():
+                mean = sum(numericValues) / float(len(numericValues))
+                self.means[category][col] = mean
+                deviation_sum = 0
+                for value in numericValues:
+                    deviation_sum += abs(mean - value)**2
+                self.ssd[category][col] = math.sqrt(deviation_sum/(len(numericValues)-1))
+
+    def pdf(self, mean, ssd, x):
+        """Probability Density Function computing P(x|y)
+        input is the mean, sample standard deviation for all the items in y,
+        and x."""
+        if ssd == 0.0:
+            ssd = 0.01
+        ePart = math.pow(math.e, -(x-mean)**2/(2*ssd**2))
+        return (1.0 / (math.sqrt(2*math.pi)*ssd)) * ePart
+
 
     def classify(self, itemVector):
         """Return hypothesis class we think item Vector is in"""
@@ -78,11 +137,11 @@ class NaiveBayesClassifer:
             prob = prior
             col = 1
             for attribute in itemVector:
-                if not attribute  in self.conditional[category][col]:
-                    prob =0
-                else:
-                    prob = prob * self.conditional[category][col][attribute]
-                    col += 1
+                # if not attribute in self.conditional[category][col]:
+                #     prob =0
+                # else:
+                prob = prob * self.pdf(self.means[category][col], self.ssd[category][col], attribute)
+                col += 1
 
             results.append((prob, category))
         return(max(results)[1])
@@ -161,6 +220,8 @@ def tenfold(bucketPrefix, dataFormat):
 #
 # print bayes_classifier.classify(['health', 'moderate', 'moderate', 'yes'])
 # print bayes_classifier.classify(['both', 'sedentary', 'moderate', 'yes'])
+
 #tenfold('../data/iHealth/i', "attr\tattr\tattr\tattr\tclass")
 
 tenfold("../data/mpgData/mpgData","class\tnum\tnum\tnum\tnum\tnum\tcomment")
+#tenfold("../data/pimaSmall/pimaSmall","num\tnum\tnum\tnum\tnum\tnum\tnum\tnum\tclass")
