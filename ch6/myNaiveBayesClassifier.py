@@ -52,7 +52,7 @@ class NaiveBayesClassifer:
                         counts[category].setdefault(col, {})
                         counts[category][col].setdefault(columnValue,0)
                         counts[category][col][columnValue] += 1
-        print classes, counts
+        #print classes, counts
         #
         # ok done counting. now compute probabilities
         #
