@@ -1,20 +1,41 @@
 __author__ = 'zhenxing'
 
+# dictionary and List speed difference in for loop, A dict is a hash table, so it is really fast to find the keys
+#
+# question: log (1+value) vs log(value) in probability computation
 import os, codecs, math
 
 class BayesTextClassifier:
-    def __init__(self, training_dir):
+    def __init__(self, training_dir, stoplist_doc):
         self.vocabulary ={}
         self.prob = {}
-        self.stopwords = []
+        self.stopwords = {}
         self.total = {}
         categories = os.listdir(training_dir)
         self.categories = [filename for filename in categories if os.path.isdir(training_dir+'/'+filename)]
+
+        #f = codecs.open(stoplist_doc, 'r', 'iso8859-1')
+        f=open(stoplist_doc)
+        for line in f:
+            #stopword = line.split();
+            #self.stopwords.append(stopword[0])
+            self.stopwords[line.strip()] = 1
+        f.close()
 
         for category in self.categories:
             print ('    ' + category)
             (self.prob[category], self.total[category]) = self.Parse_Docs(training_dir, category)
             #print(totalwords)
+
+        # I am going to eliminate any word in the vocabulary that doesn't occur at least 3 times
+        delete_word_list = []
+        for word in self.vocabulary:
+            if self.vocabulary[word] < 3:
+                delete_word_list.append(word)
+                #self.vocabulary.pop(word, None)
+
+        for word in delete_word_list:
+            self.vocabulary.pop(word, None)
 
         # calculate the conditional probability for each word
         vocablength = len(self.vocabulary)
@@ -92,11 +113,9 @@ class BayesTextClassifier:
         categories = [filename for filename in categories if
                       os.path.isdir(testdir +'/'+ filename)]
 
-        print categories
         correct = 0
         total = 0
         for category in categories:
-            print(".")
             (catCorrect, catTotal) = self.testCategory(testdir, category)
             print(category, catCorrect, catTotal)
             correct += catCorrect
@@ -105,10 +124,16 @@ class BayesTextClassifier:
 
 trainingdir = '../large_data/20news-bydate/20news-bydate-train'
 testingdir = '../large_data/20news-bydate/20news-bydate-test'
+
+stopword_doc = '../large_data/20news-bydate/stoplist.txt'
 # category ='alt.atheism'
 
-textclassifier = BayesTextClassifier(trainingdir)
+textclassifier = BayesTextClassifier(trainingdir, stopword_doc)
 
+for category in textclassifier.categories:
+    print '{:25s} {:1.10}'.format(category, math.log(textclassifier.prob[category]['god']))
+    print '{:25s} {:1.10}'.format(category, math.log(1+textclassifier.prob[category]['god']))
+    print ''
 # textclassifier.Parse_Docs(trainingdir, category)
 
 # test_doc = testingdir + '/alt.atheism/53257'
